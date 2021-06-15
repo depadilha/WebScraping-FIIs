@@ -18,7 +18,7 @@ t_inicial = time.time()
 option = Options()
 option.headless = True
 
-# Função para armazenar os dados obtidos dos FIIs.
+# Função para armazenar os dados obtidos dos FIIs em um dicionário.
 
 def dic_fii(lista):
     return {"FII": lista[-1], "Preço": lista[0], "DY12": lista[1], "DY1": lista[2], "P/PV": lista[3], "Liquidez (R$)":
@@ -34,7 +34,7 @@ browser.get("https://fiis.com.br/lista-de-fundos-imobiliarios/")
 
 browser.implicitly_wait(20)
 
-# Obtendo a quantidade de fiz listados.
+# Obtendo a quantidade de FIIs listados.
 
 qtdd_fiis = browser.find_element_by_xpath('//*[@id="fiis-counter"]').text
 int_fiis = int(qtdd_fiis[0:3])
@@ -43,7 +43,7 @@ int_fiis = int(qtdd_fiis[0:3])
 
 lista_FIIs = []
 
-# Através de um for com range baseado no número de FIIs listados, obtendo os nomes dos FIIs listados no site.
+# Através de um loop com range baseado no número de FIIs listados, obtendo os nomes dos FIIs listados no site.
 
 for i in range(int_fiis):
     nome = browser.find_element_by_xpath(f'//*[@id="items-wrapper"]/div[{i+1}]/a/span[1]').text
@@ -59,8 +59,9 @@ todos_FIIs = []
 
 """
 Obtendo todos os dados dos FIIs:
-  -Primeiro abre-se o site, através do nome obtido anteriormente, que disponibiliza os dados.
-  -Em sequência há uma verificação para caso o site daquele FII em específico não esteja no ar.
+  -Primeiro abre-se o site, concatenando o nome obtido anteriormente com a url base do site.
+  -Em sequência há uma verificação, que age caso o site daquele FII em específico não esteja no ar ignorando-o e 
+  seguindo para a próxima iteração.
   -Os dados são coletados a partir do XPATH de cada informação.
   -Os dados individuais são armazenados com a função dic_fii em um dicionário e cada dicionário gerado é armazenado na
   lista todos_FIIs.
@@ -70,7 +71,7 @@ for fii in lista_FIIs:
     dados_fii = []
     browser.get(f"https://statusinvest.com.br/fundos-imobiliarios/{fii}")
     try:
-        element = WebDriverWait(browser, 2).until(ec.presence_of_element_located(
+        element = WebDriverWait(browser, 20).until(ec.presence_of_element_located(
             (By.XPATH, '//*[@id="main-2"]/div[2]/div[1]/div[1]/div/div[1]/strong')))
     except TimeoutException as ex:
         continue
@@ -96,7 +97,7 @@ FII_wb = Workbook()
 FIIs = FII_wb.active
 FIIs.title = "FIIs"
 
-# A data é disposta no canto superior direito da planilha.
+# A data é disposta no canto superior esquerdo da planilha.
 
 data = ctime()
 data_celula = FIIs.cell(row=1, column=1)
