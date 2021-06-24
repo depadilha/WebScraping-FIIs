@@ -4,10 +4,9 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
-from openpyxl import Workbook
-import time
-from time import ctime
+import pandas as pd
 import os
+import time
 
 # Obtendo o hórario do computador.
 
@@ -17,13 +16,6 @@ t_inicial = time.time()
 
 option = Options()
 option.headless = True
-
-# Função para armazenar os dados obtidos dos FIIs em um dicionário.
-
-def dic_fii(lista):
-    return {"FII": lista[-1], "Preço": lista[0], "DY12": lista[1], "DY1": lista[2], "P/PV": lista[3], "Liquidez (R$)":
-            lista[4], "Valorização": lista[5], "IFIX": lista[6], "Segmento": lista[7]}
-
 
 # Definindo o browser e abrindo o site de onde serão retirados os nomes dos FIIs.
 
@@ -41,88 +33,91 @@ int_fiis = int(qtdd_fiis[0:3])
 
 # Lista que armazenará o nome dos FIIs.
 
-lista_FIIs = []
+nomes = []
 
-# Através de um loop com range baseado no número de FIIs listados, obtendo os nomes dos FIIs listados no site.
+# Através de um loop com range baseado no número de FIIs listados, obtêm-se os nomes dos FIIs listados no site.
 
-for i in range(int_fiis):
+for i in range(50):
     nome = browser.find_element_by_xpath(f'//*[@id="items-wrapper"]/div[{i+1}]/a/span[1]').text
-    lista_FIIs.append(nome)
+    nomes.append(nome)
 
 # Verificação.
 
-print(lista_FIIs)
+print(nomes)
 
-# Lista que armazenará todos os dados dos FIIs.
+# Listas que armazenarão todos os dados dos FIIs.
 
-todos_FIIs = []
+precos, dy12s, dy6s, dy3s, dy1s, pvps, liqs, segs, mands, nomesok = [], [], [], [], [], [],  [], [], [], []
 
 """
 Obtendo todos os dados dos FIIs:
   -Primeiro abre-se o site, concatenando o nome obtido anteriormente com a url base do site.
-  -Em sequência há uma verificação, que age caso o site daquele FII em específico não esteja no ar ignorando-o e 
-  seguindo para a próxima iteração.
+  -Em sequência há uma verificação, que age caso o site daquele FII em específico não esteja no ar ignorando-o,
+   retirando o nome do FII da lista e seguindo para a próxima iteração.
   -Os dados são coletados a partir do XPATH de cada informação.
-  -Os dados individuais são armazenados com a função dic_fii em um dicionário e cada dicionário gerado é armazenado na
-  lista todos_FIIs.
+  -Os dados são armazenados em suas respectivas listas.
 """
 
-for fii in lista_FIIs:
+for i, fii in enumerate(nomes):
+    if i == 50:
+        break
     dados_fii = []
-    browser.get(f"https://statusinvest.com.br/fundos-imobiliarios/{fii}")
+    browser.get(f"https://www.fundsexplorer.com.br/funds/{fii}")
     try:
         element = WebDriverWait(browser, 20).until(ec.presence_of_element_located(
-            (By.XPATH, '//*[@id="main-2"]/div[2]/div[1]/div[1]/div/div[1]/strong')))
+            (By.XPATH, '//*[@id="funds-show"]//*[@id="stock-price"]//*[@class="price"]')))
     except TimeoutException as ex:
         continue
-    preco = browser.find_element_by_xpath('//*[@title="Valor atual do ativo"]//*[@class="value"]').text
-    dy12 = browser.find_element_by_xpath('//*[@title="Dividend Yield com base nos últimos 12 meses"]'
-                                         '//*[@class="value"]').text
-    dy1 = browser.find_element_by_xpath('//*[@id="dy-info"]/div/div[2]/div[1]/div[1]/div/b').text
-    pvp = browser.find_element_by_xpath('//*[@id="main-2"]/div[2]/div[5]/div/div[2]/div/div[1]/strong').text
-    liq = browser.find_element_by_xpath('//*[@id="main-2"]/div[2]/div[6]/div/div/div[3]/div/div/div/strong').text
-    val = browser.find_element_by_xpath('//*[@id="main-2"]/div[2]/div[1]/div[5]/div/div[1]/strong').text
-    ifix = browser.find_element_by_xpath('//*[@id="main-2"]/div[2]/div[6]/div/div/div[4]/div/a/div/div/strong').text
-    segmento = browser.find_element_by_xpath('//*[@id="fund-section"]/div/div/div[2]/div/div[6]/div/div/strong').text
-    dados_fii.extend((preco, dy12, dy1, pvp, liq, val, ifix, segmento, fii))
-    todos_FIIs.append(dic_fii(dados_fii))
-
-# Verificação.
-
-print(todos_FIIs)
-
-# Gerando o arquivo de Excel que armazenará os dados.
-
-FII_wb = Workbook()
-FIIs = FII_wb.active
-FIIs.title = "FIIs"
-
-# A data é disposta no canto superior esquerdo da planilha.
-
-data = ctime()
-data_celula = FIIs.cell(row=1, column=1)
-data_celula.value = data
-
-# Os títulos de cada informação coletada são inseridos na planilha.
-
-for k, chave in enumerate(todos_FIIs[0].keys()):
-    titulo = FIIs.cell(row=3, column=k + 2)
-    titulo.value = chave
-
-# Por fim os dados são adicionados em fileiras na planilha.
-
-for i, dic_fiis in enumerate(todos_FIIs):
-    for j, chave in enumerate(todos_FIIs[0].keys()):
-        celula = FIIs.cell(row=i + 4, column=j + 2)
-        celula.value = todos_FIIs[i][chave]
-
-# Salvando o arquivo no diretório desejado.
-
-FII_wb.save(os.path.join(r"C:\Users\André\Desktop", "FIIs.xlsx"))
+    preco = browser.find_element_by_xpath('//*[@id="funds-show"]//*[@id="stock-price"]//*[@class="price"]').text
+    dot = browser.find_element_by_xpath('//*[@id="main-indicators-carousel"]//*[@class="flickity-page-dots"]/li[2]')
+    dot.click()
+    pvp = browser.find_element_by_xpath('//*[@id="main-indicators-carousel"]//*[@class="flickity-slider"]/div[7]'
+                                        '//*[@class="indicator-value"]').text
+    liq = browser.find_element_by_xpath('//*[@id="main-indicators-carousel"]//*[@class="flickity-slider"]/div[1]'
+                                        '//*[@class="indicator-value"]').text
+    seg = browser.find_element_by_xpath('//*[@id="basic-infos"]//*[@class="section-body"]/div/div[2]/ul/li[4]'
+                                        '//*[@class="text-wrapper"]//*[@class="description"]').text
+    mand = browser.find_element_by_xpath('//*[@id="basic-infos"]//*[@class="section-body"]/div/div[2]/ul/li[3]'
+                                         '//*[@class="text-wrapper"]//*[@class="description"]').text
+    try:
+        element2 = WebDriverWait(browser, 20).until(ec.presence_of_element_located(
+            (By.XPATH, '//*[@id="dividends"]//*[@class="table"]/tbody/tr[2]/td[5]')))
+        dy12 = browser.find_element_by_xpath('//*[@id="dividends"]//*[@class="table"]/tbody/tr[2]/td[5]').text
+        dy6 = browser.find_element_by_xpath('//*[@id="dividends"]//*[@class="table"]/tbody/tr[2]/td[4]').text
+        dy3 = browser.find_element_by_xpath('//*[@id="dividends"]//*[@class="table"]/tbody/tr[2]/td[3]').text
+        dy1 = browser.find_element_by_xpath('//*[@id="dividends"]//*[@class="table"]/tbody/tr[2]/td[2]').text
+    except TimeoutException as ex:
+        dy12, dy6, dy3, dy1 = 0, 0, 0, 0
+    precos.append(preco)
+    dy12s.append(dy12)
+    dy6s.append(dy6)
+    dy3s.append(dy3)
+    dy1s.append(dy1)
+    pvps.append(pvp)
+    liqs.append(liq)
+    segs.append(seg)
+    mands.append(mand)
+    nomesok.append(fii)
 
 # Encerrando o browser.
 
 browser.quit()
+
+# Gerando o Data Frame que armazenará os dados, através de um dicionário que inclui todas as listas.
+
+todos_FIIs = {"FII": nomesok, "Preço": precos, "DY12": dy12s, "DY6": dy6s, "DY3": dy3s, "DY1": dy1s, "P/PV": pvps,
+              "Liquidez (R$)": liqs, "Segmento": segs, "Mandato": mands}
+
+FIIsDF = pd.DataFrame(data=todos_FIIs, index=None)
+
+# Visualização
+
+print(FIIsDF)
+
+# Gerando o arquivo de Excel para visualização dos dados.
+
+with pd.ExcelWriter(os.path.join(r"C:/Users/André/Desktop", "FIIs.xlsx")) as writer:
+    FIIsDF.to_excel(writer, sheet_name="Dados")
 
 # Tempo de Execução do programa.
 
